@@ -1,8 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// schema.prisma -- Param Integration Prototype
+// MySQL 8 provider.
+// All money fields are Decimal @db.Decimal(14,2) -- never Float.
+// Cross-module references (projectCode, galleryCode, closedFor) are plain String
+// fields with NO Prisma @relation. Relations are only between models in the same module.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,4 +11,144 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// SHARED
+// ---------------------------------------------------------------------------
+
+model Message {
+  id          BigInt    @id @default(autoincrement())
+  type        String    @db.VarChar(64)
+  payload     Json
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+  processedBy String?   @db.VarChar(64)
+  error       String?   @db.Text
+
+  @@index([processedAt, id])
+  @@index([type])
+}
+
+// ---------------------------------------------------------------------------
+// BUDGET MODULE
+// ---------------------------------------------------------------------------
+
+model BudgetLine {
+  id          String       @id @default(cuid())
+  projectCode String       @db.VarChar(32)    // cross-module reference, NOT a relation
+  fiscalYear  String       @db.VarChar(16)
+  allocated   Decimal      @db.Decimal(14, 2)
+  committed   Decimal      @db.Decimal(14, 2) @default(0)
+  spent       Decimal      @db.Decimal(14, 2) @default(0)
+  commitments Commitment[]
+  expenses    Expense[]
+
+  @@unique([projectCode, fiscalYear])
+}
+
+model Commitment {
+  id           String     @id @default(cuid())
+  budgetLineId String
+  budgetLine   BudgetLine @relation(fields: [budgetLineId], references: [id])
+  sourceRef    String     @db.VarChar(64)     // the PR number that caused it
+  amount       Decimal    @db.Decimal(14, 2)
+  status       String     @db.VarChar(16)     // ACTIVE | CONVERTED | RELEASED
+  createdAt    DateTime   @default(now())
+}
+
+model Expense {
+  id           String     @id @default(cuid())
+  budgetLineId String
+  budgetLine   BudgetLine @relation(fields: [budgetLineId], references: [id])
+  sourceRef    String     @db.VarChar(64)
+  amount       Decimal    @db.Decimal(14, 2)
+  bookedAt     DateTime   @default(now())
+}
+
+model Income {
+  id         String   @id @default(cuid())
+  source     String   @db.VarChar(64)         // "ticketing"
+  amount     Decimal  @db.Decimal(14, 2)
+  receivedAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// PROCUREMENT MODULE
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id       String            @id @default(cuid())
+  name     String            @db.VarChar(128)
+  category String            @db.VarChar(64)   // Fabrication | AV | Hardware | Services
+  requests PurchaseRequest[]
+}
+
+model PurchaseRequest {
+  id             String    @id @default(cuid())
+  prNumber       String    @unique @db.VarChar(32)
+  projectCode    String    @db.VarChar(32)      // cross-module reference, NOT a relation
+  vendorId       String
+  vendor         Vendor    @relation(fields: [vendorId], references: [id])
+  description    String    @db.VarChar(255)
+  amount         Decimal   @db.Decimal(14, 2)
+  status         String    @db.VarChar(16)      // PENDING | APPROVED | REJECTED | RECEIVED
+  decisionReason String?   @db.VarChar(255)
+  createdAt      DateTime  @default(now())
+  decidedAt      DateTime?
+  receivedAt     DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// PROJECTS MODULE
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String      @id @default(cuid())
+  code        String      @unique @db.VarChar(32)
+  name        String      @db.VarChar(128)
+  galleryCode String      @db.VarChar(32)       // cross-module reference, NOT a relation
+  status      String      @db.VarChar(24)        // PLANNING | IN_PROGRESS | COMPLETE
+  startDate   DateTime
+  targetDate  DateTime
+  milestones  Milestone[]
+}
+
+model Milestone {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  title     String  @db.VarChar(128)
+  sequence  Int
+  status    String  @db.VarChar(24)              // NOT_STARTED | IN_PROGRESS | DONE
+}
+
+// ---------------------------------------------------------------------------
+// TICKETING MODULE
+// ---------------------------------------------------------------------------
+
+model TicketType {
+  id    String       @id @default(cuid())
+  name  String       @db.VarChar(64)             // General | Student | School group
+  price Decimal      @db.Decimal(14, 2)
+  sales TicketSale[]
+}
+
+model TicketSale {
+  id           String     @id @default(cuid())
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity     Int
+  amount       Decimal    @db.Decimal(14, 2)
+  soldAt       DateTime   @default(now())
+}
+
+model GalleryAvailability {
+  id          String    @id @default(cuid())
+  galleryCode String    @unique @db.VarChar(32)
+  name        String    @db.VarChar(128)
+  isOpen      Boolean   @default(true)
+  closedFrom  DateTime?
+  closedTo    DateTime?
+  closedFor   String?   @db.VarChar(64)          // project code, cross-module reference, NOT a relation
 }
