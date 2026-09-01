@@ -55,10 +55,10 @@ register("purchase.requested", handlePurchaseRequested);
 register("goods.received",     handleGoodsReceived);
 register("ticket.sold",        handleTicketSold);
 
-// Procurement module — uncomment when procurement/handlers.ts is built
-// import { handleBudgetApproved as procHandleBudgetApproved, handleBudgetRejected } from "../../modules/procurement/handlers";
-// register("budget.approved", procHandleBudgetApproved);
-// register("budget.rejected", handleBudgetRejected);
+// Procurement module — handles budget.approved, budget.rejected
+import { handleBudgetApproved as procHandleBudgetApproved, handleBudgetRejected } from "../../modules/procurement/handlers";
+register("budget.approved", procHandleBudgetApproved);
+register("budget.rejected", handleBudgetRejected);
 
 // Projects module — uncomment when projects/handlers.ts is built
 // import { handleBudgetApproved as projHandleBudgetApproved } from "../../modules/projects/handlers";
