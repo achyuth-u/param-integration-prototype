@@ -47,18 +47,23 @@ export function handlersFor<T extends MessageType>(
 // cross-module imports in the whole codebase; keeping them here makes that
 // dependency visible and auditable in one place.
 //
-// Uncomment each block as the corresponding module is implemented:
-//
-// import { handlePurchaseRequested } from "../../modules/budget/handlers";
-// import { handleBudgetApproved as procHandleBudgetApproved } from "../../modules/procurement/handlers";
-// import { handleBudgetRejected } from "../../modules/procurement/handlers";
+// Uncomment each block as the corresponding module is implemented.
+
+// Budget module — handles purchase.requested, goods.received, ticket.sold
+import { handlePurchaseRequested, handleGoodsReceived, handleTicketSold } from "../../modules/budget/handlers";
+register("purchase.requested", handlePurchaseRequested);
+register("goods.received",     handleGoodsReceived);
+register("ticket.sold",        handleTicketSold);
+
+// Procurement module — uncomment when procurement/handlers.ts is built
+// import { handleBudgetApproved as procHandleBudgetApproved, handleBudgetRejected } from "../../modules/procurement/handlers";
+// register("budget.approved", procHandleBudgetApproved);
+// register("budget.rejected", handleBudgetRejected);
+
+// Projects module — uncomment when projects/handlers.ts is built
 // import { handleBudgetApproved as projHandleBudgetApproved } from "../../modules/projects/handlers";
+// register("budget.approved", projHandleBudgetApproved);
+
+// Ticketing module — uncomment when ticketing/handlers.ts is built
 // import { handleGalleryClosed } from "../../modules/ticketing/handlers";
-// import { handleTicketSold } from "../../modules/budget/handlers";
-//
-// register("purchase.requested", handlePurchaseRequested);
-// register("budget.approved",    procHandleBudgetApproved);
-// register("budget.rejected",    handleBudgetRejected);
-// register("budget.approved",    projHandleBudgetApproved);
-// register("gallery.closed",     handleGalleryClosed);
-// register("ticket.sold",        handleTicketSold);
+// register("gallery.closed", handleGalleryClosed);
