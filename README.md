@@ -1,6 +1,6 @@
 # PARAM Integration Prototype
 
-This is a prototype demonstrating a highly decoupled, asynchronous integration architecture for four internal domains — budget, procurement, project tracking and ticketing — for a science centre's operations. It proves how they can communicate robustly and reliably without tight coupling or distributed transactions, relying entirely on asynchronous messaging and a unified UI shell.
+This is a prototype demonstrating a highly decoupled, asynchronous integration architecture for four internal domains — budget, procurement, project tracking and ticketing — for a science centre's operations. It proves how they can communicate robustly and reliably without tight coupling, relying entirely on asynchronous messaging and a unified UI shell.
 
 For the full architectural argument, tradeoffs, and design decisions, please read the [Solution Design](./SOLUTION_DESIGN.md).
 
