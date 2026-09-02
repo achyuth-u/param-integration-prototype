@@ -339,20 +339,8 @@ integration, and a PostgreSQL migration with deployment and credential handover.
 
 ## 13. Running it
 
-```bash
-git clone <repository-url>
-cd param-integration-prototype
-npm install
+For setup and initialization instructions, please refer to the [README](./README.md).
 
-docker run --name param-mysql -e MYSQL_ROOT_PASSWORD=dev \
-  -e MYSQL_DATABASE=param_platform -p 3306:3306 -d mysql:8
-
-cp .env.example .env
-npx prisma db push
-npx tsx prisma/seed.ts
-npm run dev
-```
-
-Open `http://localhost:5173`. The activity screen shows the message log; raising a
+Once running, the activity screen shows the message log; raising a
 purchase request on the purchases screen and watching the messages appear is the shortest
 path to seeing the integration work.
