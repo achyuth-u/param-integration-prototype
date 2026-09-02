@@ -11,6 +11,7 @@ import { budgetRouter } from "./modules/budget/routes";
 import { procurementRouter } from "./modules/procurement/routes";
 import { projectsRouter } from "./modules/projects/routes";
 import { ticketingRouter } from "./modules/ticketing/routes";
+import { dashboardRouter } from "./shared/dashboard";
 import { dispatch } from "./shared/messages/dispatch";
 
 // Importing the registry is enough — its top-level register() calls run on import.
@@ -25,6 +26,7 @@ app.use("/api/budget", budgetRouter);
 app.use("/api", procurementRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/ticketing", ticketingRouter);
+app.use("/api", dashboardRouter);
 
 // ── Dispatcher safety-net: poll every 2 s for unprocessed messages ──────────
 setInterval(() => {
