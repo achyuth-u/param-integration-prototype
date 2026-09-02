@@ -32,12 +32,12 @@ to make.
 A science centre runs four functions that each hold accurate data about themselves and
 stale data about everything else.
 
-| Domain           | Owns                                    | Typically lives in                          |
-| ---------------- | --------------------------------------- | ------------------------------------------- |
-| Budget           | Allocations, commitments, spend, income | Finance spreadsheets or accounting software |
-| Procurement      | Vendors, purchase requests, orders      | Email threads and paper approvals           |
-| Project tracking | Gallery and exhibit builds, milestones  | A shared spreadsheet                        |
-| Ticketing        | Visitor sales, gallery availability     | A counter system or vendor platform         |
+| Domain | Owns | Typically lives in |
+|---|---|---|
+| Budget | Allocations, commitments, spend, income | Finance spreadsheets or accounting software |
+| Procurement | Vendors, purchase requests, orders | Email threads and paper approvals |
+| Project tracking | Gallery and exhibit builds, milestones | A shared spreadsheet |
+| Ticketing | Visitor sales, gallery availability | A counter system or vendor platform |
 
 The symptoms this produces are specific and recognisable:
 
@@ -157,13 +157,14 @@ would leak here if anywhere, and it does not.
 
 ## 5. Technology
 
-| Layer                         | Choice   | Reason                                                                               |
-| ----------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| MySQL 8                       | Database | ACID guarantees and row-level locking, both needed for the budget check in section 7 |
-| Prisma                        | ORM      | Type-safe queries; the raw escape hatch is available where locking requires it       |
-| Node.js + Express             | Backend  | Straightforward module composition; no framework opinions to work around             |
-| React + TypeScript + Tailwind | Frontend | Same stack used in production on a previous project                                  |
-| Decimal(14,2)                 | Money    | Floating point loses precision on currency; never appropriate for financial records  |
+| Layer | Choice | Reason |
+|---|---|---|
+| MySQL 8 | Database | ACID guarantees and row-level locking, both needed for the budget check in section 8 |
+| Prisma | ORM | Type-safe queries; the raw escape hatch is available where locking requires it |
+| Node.js + Express | Backend | Straightforward module composition; no framework opinions to work around |
+| React + TypeScript + Tailwind | Frontend | Fast to build, and the type safety carries through from the Prisma schema |
+| Recharts | Charts | Composable, no canvas dependency, styles cleanly with CSS variables |
+| Decimal(14,2) | Money | Floating point loses precision on currency; never appropriate for financial records |
 
 The database choice is deliberately not load-bearing. Because modules communicate only
 through messages, the persistence layer is an implementation detail of each module.
@@ -188,7 +189,7 @@ foreign keys.
 
 **Shared** — `Message` (type, payload, created, processed, error).
 
-The separation of _committed_ from _spent_ is the point of the budget model. Committed
+The separation of *committed* from *spent* is the point of the budget model. Committed
 money is promised but not yet paid, and treating it as available is the single most common
 cause of budget overrun in project-based organisations.
 
@@ -198,16 +199,16 @@ cause of budget overrun in project-based organisations.
 
 ### Flow A — a purchase request checked against project funds
 
-| Step | Module      | Action                                                                                |
-| ---- | ----------- | ------------------------------------------------------------------------------------- |
-| 1    | Procurement | Receives `POST /api/purchase-requests`, creates a PENDING request                     |
-| 2    | Procurement | Publishes `purchase.requested` in the same transaction                                |
-| 3    | Budget      | Handler picks it up, locks the budget line row                                        |
-| 4    | Budget      | Computes available = allocated − committed − spent                                    |
-| 5    | Budget      | If sufficient: creates a commitment, increases committed, publishes `budget.approved` |
-| 6    | Budget      | If not: publishes `budget.rejected` naming the shortfall                              |
-| 7    | Procurement | Handler sets the request to APPROVED or REJECTED with the reason                      |
-| 8    | Projects    | On approval, advances the relevant milestone                                          |
+| Step | Module | Action |
+|---|---|---|
+| 1 | Procurement | Receives `POST /api/purchase-requests`, creates a PENDING request |
+| 2 | Procurement | Publishes `purchase.requested` in the same transaction |
+| 3 | Budget | Handler picks it up, locks the budget line row |
+| 4 | Budget | Computes available = allocated − committed − spent |
+| 5 | Budget | If sufficient: creates a commitment, increases committed, publishes `budget.approved` |
+| 6 | Budget | If not: publishes `budget.rejected` naming the shortfall |
+| 7 | Procurement | Handler sets the request to APPROVED or REJECTED with the reason |
+| 8 | Projects | On approval, advances the relevant milestone |
 
 Later, when goods arrive, procurement publishes `goods.received` and the budget module
 converts the commitment into actual spend.
@@ -226,14 +227,14 @@ with no message passed between people.
 
 ### Message catalogue
 
-| Message              | Published by | Handled by            | Effect                               |
-| -------------------- | ------------ | --------------------- | ------------------------------------ |
-| `purchase.requested` | Procurement  | Budget                | Triggers the availability check      |
-| `budget.approved`    | Budget       | Procurement, Projects | Request approved; milestone advances |
-| `budget.rejected`    | Budget       | Procurement           | Request rejected with a reason       |
-| `goods.received`     | Procurement  | Budget                | Commitment becomes actual spend      |
-| `gallery.closed`     | Projects     | Ticketing             | Gallery availability blocked         |
-| `ticket.sold`        | Ticketing    | Budget                | Revenue posted to the income ledger  |
+| Message | Published by | Handled by | Effect |
+|---|---|---|---|
+| `purchase.requested` | Procurement | Budget | Triggers the availability check |
+| `budget.approved` | Budget | Procurement, Projects | Request approved; milestone advances |
+| `budget.rejected` | Budget | Procurement | Request rejected with a reason |
+| `goods.received` | Procurement | Budget | Commitment becomes actual spend |
+| `gallery.closed` | Projects | Ticketing | Gallery availability blocked |
+| `ticket.sold` | Ticketing | Budget | Revenue posted to the income ledger |
 
 ---
 
@@ -285,19 +286,20 @@ and an operator view to inspect and replay them. All are noted as deliberate fut
 - Message log with publish, dispatch and per-module handlers
 - Flow A end to end, demonstrating both approval and rejection
 - Flow B end to end
-- Three screens: dashboard, purchase requests, activity log
+- Three screens: dashboard with charts, purchase requests, activity log
 - Seeded data representing a system already in use
 
 ### Deliberately not built
 
-| Excluded                           | Reason                                                                              |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| Authentication                     | A role switcher stands in. Auth is well understood and not what this task examines. |
-| Payment gateway                    | Requires live merchant credentials and KYC approval.                                |
-| Accounting software connector      | Requires knowing which system Param runs and having API access.                     |
-| Approval thresholds and chains     | Requires Param's actual delegation-of-authority rules.                              |
-| Email and messaging notifications  | Plumbing rather than architecture.                                                  |
-| Pagination, caching, rate limiting | Not meaningful at prototype data volumes.                                           |
+| Excluded | Reason |
+|---|---|
+| Authentication | A role switcher stands in. Auth is well understood and not what this task examines. |
+| Payment gateway | Requires live merchant credentials and KYC approval. |
+| Accounting software connector | Requires knowing which system Param runs and having API access. |
+| Approval thresholds and chains | Requires Param's actual delegation-of-authority rules. |
+| Email and messaging notifications | Plumbing rather than architecture. |
+| Pagination, caching, rate limiting | Not meaningful at prototype data volumes. |
+| Deployment | Runs locally; setup is documented in the README. |
 
 The second table matters as much as the first. Knowing what a complete system requires,
 choosing what to build in the time available, and being able to say exactly what
@@ -324,26 +326,23 @@ closure.
 
 ---
 
-## 12. Note on scope of the prototype
+## 12. Note on scope
 
 This prototype is intentionally small. It demonstrates one architectural argument
-thoroughly rather than several features shallowly.
-
-For reference on production work at a larger scale, the attached handover document for
-**Printbot 3D** covers a full-stack application I built and documented for handover:
-authentication and role-based access, file upload with in-browser 3D preview, an order
-lifecycle with status-driven notifications, transactional email templates, a WhatsApp
-integration, and a PostgreSQL migration with deployment and credential handover.
+thoroughly rather than several features shallowly. The four modules, the message log
+between them, and the two flows that cross it are the whole of it — everything in the
+"deliberately not built" table above was left out so that the part that matters could be
+built properly and verified.
 
 ---
 
 ## 13. Running it
 
-For setup and initialization instructions, please refer to the [README](./README.md).
+For setup and initialisation instructions, see the [README](./README.md).
 
-Once running, the activity screen shows the message log; raising a
-purchase request on the purchases screen and watching the messages appear is the shortest
-path to seeing the integration work.
+Once running, the activity screen shows the message log; raising a purchase request on the
+purchases screen and watching the messages appear is the shortest path to seeing the
+integration work.
 
 ---
 
@@ -351,6 +350,12 @@ path to seeing the integration work.
 
 An agentic IDE was used for code generation on this prototype.
 
-The work started from a written specification — the domain interpretation, the module boundaries, the message catalogue and the two flows — and proceeded one module at a time, each verified before the next was started. That verification included checking that no module imported from or queried another module's tables, confirming the budget check held a real row lock rather than an ordinary read, and testing both flows end to end through the API before any interface was built.
+The work started from a written specification — the domain interpretation, the module
+boundaries, the message catalogue and the two flows — and proceeded one module at a time,
+each verified before the next was started. That verification included checking that no
+module imported from or queried another module's tables, confirming the budget check held
+a real row lock rather than an ordinary read, and testing both flows end to end through the
+API before any interface was built.
 
-The architectural decisions set out in this document are my own, as is the scope judgement in section 10.
+The architectural decisions set out in this document are my own, as is the scope judgement
+in section 10.
