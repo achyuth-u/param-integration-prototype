@@ -19,18 +19,20 @@ export async function dispatch(): Promise<void> {
 
   for (const msg of pending) {
     const type = msg.type as MessageType;
-    const handlers = handlersFor(type);
+    const entries = handlersFor(type);
 
-    if (handlers.length === 0) continue;
+    if (entries.length === 0) continue;
 
     try {
       const payload = msg.payload as MessagePayloads[typeof type];
-      for (const handler of handlers) {
-        await (handler as (p: typeof payload) => Promise<void>)(payload);
+      const modules: string[] = [];
+      for (const entry of entries) {
+        await (entry.handler as (p: typeof payload) => Promise<void>)(payload);
+        modules.push(entry.module);
       }
       await prisma.message.update({
         where: { id: msg.id },
-        data:  { processedAt: new Date(), processedBy: type },
+        data:  { processedAt: new Date(), processedBy: modules.join(",") },
       });
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
