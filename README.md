@@ -1,75 +1,136 @@
-# PARAM Integration Prototype
+# Param Integration Prototype
 
-This is a prototype demonstrating a highly decoupled, asynchronous integration architecture for four internal domains — budget, procurement, project tracking and ticketing — for a science centre's operations. It proves how they can communicate robustly and reliably without tight coupling, relying entirely on asynchronous messaging and a unified UI shell.
+A prototype integrating four internal domains — budget, procurement, project tracking and
+ticketing — for a science centre's operations.
 
-For the full architectural argument, tradeoffs, and design decisions, please read the [Solution Design](./SOLUTION_DESIGN.md).
+The four domains are kept strictly independent. No module reads another module's tables. If
+procurement needs to know whether a project has funds, it publishes a message and waits for
+the budget module to answer. Every piece of information that crosses a module boundary
+travels through a shared message log.
+
+For the architectural argument, the alternatives considered, and what was deliberately left
+out, see the [Solution Design](./SOLUTION_DESIGN.md). The build specification the prototype
+was developed against is in [SPEC.md](./SPEC.md).
+
+---
 
 ## Setup
 
-1. **Clone and install dependencies**
-   ```bash
-   git clone https://github.com/achyuth-u/param-integration-prototype.git
-   cd param-integration-prototype
-   npm install
-   cd client && npm install && cd ..
-   ```
+**1. Clone and install**
 
-2. **Database**
-   Ensure you have MySQL 8 running locally. Create a database for the prototype:
-   ```sql
-   CREATE DATABASE param_platform;
-   ```
+```bash
+git clone https://github.com/achyuth-u/param-integration-prototype.git
+cd param-integration-prototype
+npm install
+cd client && npm install && cd ..
+```
 
-3. **Environment setup**
-   Copy the example environment file and adjust the database URL if necessary:
-   ```bash
-   cp .env.example .env
-   ```
+**2. Database**
 
-4. **Initialize schema and data**
-   Push the schema to your database and run the seed script to populate initial data and historical activity:
-   ```bash
-   npx prisma db push
-   npx prisma generate
-   npm run seed
-   ```
+Requires MySQL 8 running locally. Create the database:
 
-5. **Run the application**
-   You need to start both the backend server and the frontend client. Run these in separate terminal windows:
-   ```bash
-   # Terminal 1 (Backend)
-   npm run dev
+```sql
+CREATE DATABASE param_platform CHARACTER SET utf8mb4;
+```
 
-   # Terminal 2 (Frontend)
-   cd client
-   npm run dev
-   ```
-   Access the application at `http://localhost:5173`.
+**3. Environment**
 
-## See the Integration in 60 Seconds
+Copy the example file and set your MySQL password in `DATABASE_URL`:
 
-To see the modules communicating in action:
+```bash
+copy .env.example .env      # Windows
+cp .env.example .env        # macOS / Linux
+```
 
-1. **Open the Dashboard**: Navigate to the Dashboard. You'll see real-time aggregations across all modules without a single direct cross-domain database query — the dashboard endpoint composes each module's exported `getSummary()` function rather than querying tables.
-2. **Raise a successful request**: Go to **Purchase Requests** and click "New request". Select `PROJ-OCN` and request an amount of `1,20,000`. You will see it appear as `PENDING`. Wait ~2 seconds for the background dispatcher to run, and it will update to `APPROVED`.
-3. **Raise a failing request**: Create another request for `PROJ-OCN` but this time for `90,00,000`. Wait ~2 seconds, and it will update to `REJECTED` with a clear reason explaining the budget shortfall.
-4. **Check the Activity Feed**: Navigate to the **Activity** page. You will see a chronological feed of all cross-module communication. Notice how the `purchase.requested` event published by the Procurement module was received and handled by the Budget module, leading to either a `budget.approved` or `budget.rejected` response.
+**4. Schema and seed data**
 
-## Folder Structure
+```bash
+npx prisma db push
+npx prisma generate
+npm run seed
+```
 
-The backend is strictly divided into bounded contexts. No module imports from any other module's folder. All cross-module communication happens via the `Message` table.
+The seed populates three projects, three budget lines, five vendors, eight purchase
+requests across all statuses, two weeks of ticket sales, four galleries, and backdated
+message rows so the activity feed is populated on first load.
+
+**5. Run**
+
+Two terminals:
+
+```bash
+# Terminal 1 — backend, port 3001
+npm run dev
+
+# Terminal 2 — frontend, port 5173
+cd client
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+Requires Node 22. Node 24 is not supported by Prisma 5.
+
+---
+
+## Seeing the integration in 60 seconds
+
+**1. Dashboard.** Aggregations across all four modules, with no direct cross-domain
+database query — the dashboard endpoint composes each module's exported `getSummary()`
+rather than reading tables.
+
+**2. Raise a request that fits.** Purchase Requests → New request → project `PROJ-OCN`,
+amount `120000`. It appears as `PENDING`, because procurement genuinely does not know
+whether funds exist. Within a couple of seconds it becomes `APPROVED` — the budget module
+picked up the message, locked the budget line, checked the balance, reserved the money, and
+answered.
+
+**3. Raise one that does not fit.** Same project, amount `9000000`. It becomes `REJECTED`
+with a reason naming the available balance and the shortfall. That reason came from the
+budget module, not from a validation rule in the form.
+
+**4. Activity.** Every cross-module message, newest first, showing the publishing module
+and the modules that handled it — `procurement → budget`, `budget → procurement,projects`.
+Expand any row to see the payload.
+
+**5. Mark goods received** on the approved request. The commitment converts to actual
+spend: committed drops, spent rises, available is unchanged.
+
+---
+
+## Folder structure
+
+The backend is divided into four sealed modules. No module imports from another module's
+folder, and no module queries another module's tables. All cross-module communication goes
+through the `Message` table.
 
 ```
 src/
 ├── modules/
-│   ├── budget/         # Manages project budgets and commitments
-│   ├── procurement/    # Manages vendors and purchase requests
-│   ├── projects/       # Manages project milestones and gallery closures
-│   └── ticketing/      # Manages gallery availability and ticket sales
+│   ├── budget/         # budget lines, commitments, expenses, income
+│   ├── procurement/    # vendors and purchase requests
+│   ├── projects/       # projects, milestones, gallery closures
+│   └── ticketing/      # ticket sales and gallery availability
 ├── shared/
-│   ├── messages/       # Registry and dispatcher for async messaging
-│   ├── dashboard.ts    # API composition for the frontend dashboard
-│   ├── prisma.ts       # Shared Prisma client
-│   └── types.ts        # Shared message payload definitions
-└── server.ts           # Express bootstrap and message loop initialization
+│   ├── messages/       # publish, registry, dispatch
+│   ├── dashboard.ts    # composes each module's getSummary(); never queries tables
+│   ├── prisma.ts       # single Prisma client
+│   └── types.ts        # message payload types
+└── server.ts           # express bootstrap, route mounting, dispatch interval
+
+client/
+└── src/pages/          # Dashboard, PurchaseRequests, Activity
 ```
+
+---
+
+## Stack
+
+React, TypeScript, Vite, Tailwind and Recharts on the frontend. Node, Express, TypeScript,
+Prisma 5 and MySQL 8 on the backend.
+
+---
+
+*Sample data is illustrative. The interpretation of the four domains is based on the role
+description and the general nature of a science centre's operations, and would be validated
+with the operations team.*
