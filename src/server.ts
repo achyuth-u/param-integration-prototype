@@ -9,6 +9,8 @@ import cors from "cors";
 
 import { budgetRouter } from "./modules/budget/routes";
 import { procurementRouter } from "./modules/procurement/routes";
+import { projectsRouter } from "./modules/projects/routes";
+import { ticketingRouter } from "./modules/ticketing/routes";
 import { dispatch } from "./shared/messages/dispatch";
 
 // Importing the registry is enough — its top-level register() calls run on import.
@@ -21,6 +23,8 @@ app.use(express.json());
 // ── Route mounting ──────────────────────────────────────────────────────────
 app.use("/api/budget", budgetRouter);
 app.use("/api", procurementRouter);
+app.use("/api/projects", projectsRouter);
+app.use("/api/ticketing", ticketingRouter);
 
 // ── Dispatcher safety-net: poll every 2 s for unprocessed messages ──────────
 setInterval(() => {

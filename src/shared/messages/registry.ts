@@ -60,10 +60,10 @@ import { handleBudgetApproved as procHandleBudgetApproved, handleBudgetRejected 
 register("budget.approved", procHandleBudgetApproved);
 register("budget.rejected", handleBudgetRejected);
 
-// Projects module — uncomment when projects/handlers.ts is built
-// import { handleBudgetApproved as projHandleBudgetApproved } from "../../modules/projects/handlers";
-// register("budget.approved", projHandleBudgetApproved);
+// Projects module — handles budget.approved (advances milestone)
+import { handleBudgetApproved as projHandleBudgetApproved } from "../../modules/projects/handlers";
+register("budget.approved", projHandleBudgetApproved);
 
-// Ticketing module — uncomment when ticketing/handlers.ts is built
-// import { handleGalleryClosed } from "../../modules/ticketing/handlers";
-// register("gallery.closed", handleGalleryClosed);
+// Ticketing module — handles gallery.closed
+import { handleGalleryClosed } from "../../modules/ticketing/handlers";
+register("gallery.closed", handleGalleryClosed);
